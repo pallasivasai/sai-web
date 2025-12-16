@@ -19,19 +19,61 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          recipient_id: string | null
+          sender_id: string | null
           sender_name: string
         }
         Insert: {
           content: string
           created_at?: string
           id?: string
+          recipient_id?: string | null
+          sender_id?: string | null
           sender_name?: string
         }
         Update: {
           content?: string
           created_at?: string
           id?: string
+          recipient_id?: string | null
+          sender_id?: string | null
           sender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+          username?: string
         }
         Relationships: []
       }
