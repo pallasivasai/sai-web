@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import ChatRoom from "@/components/ChatRoom";
@@ -26,12 +26,6 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
-    }
-  }, [loading, user, navigate]);
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -46,7 +40,7 @@ const Index = () => {
   }
 
   if (!user) {
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   return <ChatRoom user={user} onLogout={handleLogout} />;
