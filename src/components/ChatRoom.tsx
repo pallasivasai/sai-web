@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, LogOut, Users, MessageSquare } from "lucide-react";
+import { Send, LogOut, Users, MessageSquare, Image, Mic, Square, Play, Pause } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 
@@ -20,6 +20,8 @@ interface Message {
   sender_id: string;
   recipient_id: string;
   created_at: string;
+  image_url?: string | null;
+  voice_url?: string | null;
 }
 
 interface ChatRoomProps {
@@ -35,7 +37,13 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -140,6 +148,148 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
     setMessages(data || []);
   };
 
+  const uploadFile = async (file: File, type: 'image' | 'voice'): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('chat-media')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      toast({
+        title: "Upload failed",
+        description: uploadError.message,
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from('chat-media')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentProfile || !selectedRecipient) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    const imageUrl = await uploadFile(file, 'image');
+
+    if (imageUrl) {
+      const { error } = await supabase.from("messages").insert({
+        content: "",
+        sender_name: currentProfile.username,
+        sender_id: currentProfile.id,
+        recipient_id: selectedRecipient,
+        image_url: imageUrl,
+      });
+
+      if (error) {
+        toast({
+          title: "Failed to send image",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
+
+    setIsLoading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+        
+        stream.getTracks().forEach(track => track.stop());
+        
+        if (!currentProfile || !selectedRecipient) return;
+
+        setIsLoading(true);
+        const voiceUrl = await uploadFile(audioFile, 'voice');
+
+        if (voiceUrl) {
+          const { error } = await supabase.from("messages").insert({
+            content: "",
+            sender_name: currentProfile.username,
+            sender_id: currentProfile.id,
+            recipient_id: selectedRecipient,
+            voice_url: voiceUrl,
+          });
+
+          if (error) {
+            toast({
+              title: "Failed to send voice",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+        }
+        setIsLoading(false);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      toast({
+        title: "Microphone access denied",
+        description: "Please allow microphone access to record voice messages",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const playVoice = (url: string) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    
+    if (playingVoice === url) {
+      setPlayingVoice(null);
+      return;
+    }
+
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    audio.play();
+    setPlayingVoice(url);
+    
+    audio.onended = () => {
+      setPlayingVoice(null);
+    };
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentProfile || !selectedRecipient) return;
@@ -185,7 +335,6 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background cyber-grid relative">
-      {/* Scanline overlay */}
       <div className="absolute inset-0 scanline pointer-events-none z-10" />
 
       {/* Header */}
@@ -299,9 +448,31 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                           : "bg-card border border-primary/20"
                       }`}
                     >
-                      <p className="text-sm text-foreground break-words">
-                        {message.content}
-                      </p>
+                      {message.image_url && (
+                        <img 
+                          src={message.image_url} 
+                          alt="Shared image" 
+                          className="max-w-full rounded-lg mb-2 max-h-64 object-contain"
+                        />
+                      )}
+                      {message.voice_url && (
+                        <button
+                          onClick={() => playVoice(message.voice_url!)}
+                          className="flex items-center gap-2 text-sm py-1 px-3 rounded-full bg-primary/20 hover:bg-primary/30 transition-colors"
+                        >
+                          {playingVoice === message.voice_url ? (
+                            <Pause className="w-4 h-4" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                          Voice Message
+                        </button>
+                      )}
+                      {message.content && (
+                        <p className="text-sm text-foreground break-words">
+                          {message.content}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -317,8 +488,49 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
         <div className="relative z-20 bg-card/80 backdrop-blur-xl border-t border-primary/30 px-4 py-4">
           <form
             onSubmit={handleSendMessage}
-            className="max-w-4xl mx-auto flex gap-3"
+            className="max-w-4xl mx-auto flex gap-3 items-center"
           >
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept="image/*"
+              className="hidden"
+            />
+            
+            {/* Image upload button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              className="h-12 w-12 border border-primary/30 hover:bg-primary/10"
+            >
+              <Image className="w-5 h-5 text-primary" />
+            </Button>
+
+            {/* Voice record button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isLoading && !isRecording}
+              className={`h-12 w-12 border ${
+                isRecording 
+                  ? "border-destructive bg-destructive/20 hover:bg-destructive/30" 
+                  : "border-primary/30 hover:bg-primary/10"
+              }`}
+            >
+              {isRecording ? (
+                <Square className="w-5 h-5 text-destructive" />
+              ) : (
+                <Mic className="w-5 h-5 text-primary" />
+              )}
+            </Button>
+
             <Input
               type="text"
               value={newMessage}
@@ -326,11 +538,11 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
               placeholder="Type your message..."
               className="flex-1 bg-background/50 border-primary/30 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 h-12"
               maxLength={500}
-              disabled={isLoading}
+              disabled={isLoading || isRecording}
             />
             <Button
               type="submit"
-              disabled={isLoading || !newMessage.trim()}
+              disabled={isLoading || !newMessage.trim() || isRecording}
               className="h-12 px-6 bg-primary text-primary-foreground hover:bg-primary/90 font-display tracking-wider glow-primary transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-5 h-5" />
