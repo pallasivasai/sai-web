@@ -100,7 +100,7 @@ const Auth = () => {
   const getTitle = () => {
     switch (mode) {
       case "login": return "Welcome Back";
-      case "signup": return "Create Account";
+      case "signup": return "Join Sai Webpage";
       case "forgot": return "Reset Password";
       case "reset": return "Set New Password";
     }
@@ -108,8 +108,8 @@ const Auth = () => {
 
   const getSubtitle = () => {
     switch (mode) {
-      case "login": return "Sign in to continue";
-      case "signup": return "Join the secure chat";
+      case "login": return "Sign in to continue chatting";
+      case "signup": return "Create your account to get started";
       case "forgot": return "Enter your email to receive a reset link";
       case "reset": return "Enter your new password";
     }
@@ -126,9 +126,9 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
+    <div className="min-h-screen mesh-bg floating-orbs flex items-center justify-center p-4">
+      <div className="w-full max-w-md relative z-10">
+        <div className="glass-card rounded-3xl p-8 shadow-2xl">
           {(mode === "forgot" || mode === "reset") && (
             <button
               onClick={() => setMode("login")}
@@ -140,10 +140,10 @@ const Auth = () => {
           )}
 
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
-              <Lock className="w-8 h-8 text-primary" />
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl btn-gradient flex items-center justify-center shadow-lg">
+              <Lock className="w-10 h-10 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="font-display text-3xl font-bold text-gradient mb-2">
               {getTitle()}
             </h1>
             <p className="text-muted-foreground">
@@ -160,7 +160,7 @@ const Auth = () => {
                   placeholder="Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="pl-10 bg-background border-border"
+                  className="pl-10 bg-background/50 border-border rounded-xl h-12"
                   required
                 />
               </div>
@@ -174,7 +174,7 @@ const Auth = () => {
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-background border-border"
+                  className="pl-10 bg-background/50 border-border rounded-xl h-12"
                   required
                 />
               </div>
@@ -188,7 +188,7 @@ const Auth = () => {
                   placeholder={mode === "reset" ? "New Password" : "Password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 bg-background border-border"
+                  className="pl-10 bg-background/50 border-border rounded-xl h-12"
                   required
                   minLength={6}
                 />
@@ -203,7 +203,7 @@ const Auth = () => {
                   placeholder="Confirm New Password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10 bg-background border-border"
+                  className="pl-10 bg-background/50 border-border rounded-xl h-12"
                   required
                   minLength={6}
                 />
@@ -213,7 +213,7 @@ const Auth = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3"
+              className="w-full btn-gradient text-primary-foreground font-semibold py-3 h-12 rounded-xl"
             >
               {getButtonText()}
             </Button>
@@ -234,7 +234,7 @@ const Auth = () => {
             <div className="mt-6 text-center">
               <button
                 onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                className="text-primary hover:text-primary/80 transition-colors"
+                className="text-primary hover:text-primary/80 font-medium transition-colors"
               >
                 {mode === "login" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
               </button>

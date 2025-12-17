@@ -327,61 +327,59 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-primary animate-pulse">Loading...</div>
+      <div className="min-h-screen mesh-bg floating-orbs flex items-center justify-center">
+        <div className="text-gradient font-display text-xl animate-pulse">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background cyber-grid relative">
-      <div className="absolute inset-0 scanline pointer-events-none z-10" />
-
+    <div className="min-h-screen flex flex-col mesh-bg floating-orbs relative">
       {/* Header */}
-      <header className="relative z-20 bg-card/80 backdrop-blur-xl border-b border-primary/30 px-4 py-3">
+      <header className="relative z-20 glass-card border-b px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-primary" />
+            <div className="w-12 h-12 rounded-2xl btn-gradient flex items-center justify-center shadow-lg">
+              <MessageSquare className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-display text-lg font-bold text-primary text-glow tracking-wider">
-                SECURE CHANNEL
+              <h1 className="font-display text-xl font-bold text-gradient">
+                Sai Webpage
               </h1>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Users className="w-3 h-3" />
-                Logged in as <span className="text-primary">{currentProfile?.username}</span>
+                Welcome, <span className="text-primary font-medium">{currentProfile?.username}</span>
               </p>
             </div>
           </div>
           <Button
             onClick={onLogout}
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-destructive/30"
+            className="rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Exit
+            Logout
           </Button>
         </div>
       </header>
 
       {/* User Selection */}
-      <div className="relative z-20 bg-card/50 border-b border-primary/20 px-4 py-3">
+      <div className="relative z-20 glass-card border-b px-4 py-4">
         <div className="max-w-4xl mx-auto">
-          <label className="block text-xs font-medium text-muted-foreground mb-2">
-            Select a user to chat with:
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Chat with
           </label>
           <Select value={selectedRecipient || ""} onValueChange={setSelectedRecipient}>
-            <SelectTrigger className="w-full max-w-xs bg-background/50 border-primary/30">
-              <SelectValue placeholder="Choose a user..." />
+            <SelectTrigger className="w-full max-w-xs rounded-xl bg-background/50 border-border">
+              <SelectValue placeholder="Select a friend..." />
             </SelectTrigger>
-            <SelectContent className="bg-card border-primary/30">
+            <SelectContent className="rounded-xl bg-card border-border">
               {profiles.length === 0 ? (
-                <div className="p-2 text-muted-foreground text-sm">No other users yet</div>
+                <div className="p-3 text-muted-foreground text-sm">No other users yet</div>
               ) : (
                 profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
+                  <SelectItem key={profile.id} value={profile.id} className="rounded-lg">
                     {profile.username}
                   </SelectItem>
                 ))
@@ -392,24 +390,24 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
       </div>
 
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 relative z-20">
+      <div className="flex-1 overflow-y-auto px-4 py-6 relative z-20 dot-pattern">
         <div className="max-w-4xl mx-auto space-y-4">
           {!selectedRecipient ? (
             <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border border-primary/30 bg-card/50 mb-4">
-                <Users className="w-8 h-8 text-primary/50" />
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl btn-gradient mb-4 shadow-lg">
+                <Users className="w-10 h-10 text-primary-foreground" />
               </div>
-              <p className="text-muted-foreground text-sm">
-                Select a user from the dropdown to start chatting
+              <p className="text-muted-foreground">
+                Select a friend to start chatting
               </p>
             </div>
           ) : messages.length === 0 ? (
             <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border border-primary/30 bg-card/50 mb-4">
-                <MessageSquare className="w-8 h-8 text-primary/50" />
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl btn-gradient mb-4 shadow-lg">
+                <MessageSquare className="w-10 h-10 text-primary-foreground" />
               </div>
-              <p className="text-muted-foreground text-sm">
-                No messages with {selectedUser?.username} yet. Start the conversation!
+              <p className="text-muted-foreground">
+                No messages with {selectedUser?.username} yet. Say hi! 👋
               </p>
             </div>
           ) : (
@@ -422,10 +420,10 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                 >
                   {/* Avatar */}
                   <div
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                    className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-md ${
                       isOwn
-                        ? "bg-accent/20 border border-accent/50 text-accent"
-                        : "bg-primary/20 border border-primary/50 text-primary"
+                        ? "btn-gradient text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
                     }`}
                   >
                     {message.sender_name.charAt(0).toUpperCase()}
@@ -434,7 +432,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                   {/* Message bubble */}
                   <div className={`max-w-[70%] ${isOwn ? "items-end" : "items-start"}`}>
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className={`text-xs font-medium ${isOwn ? "text-accent" : "text-primary"}`}>
+                      <span className={`text-xs font-semibold ${isOwn ? "text-accent" : "text-primary"}`}>
                         {message.sender_name}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
@@ -442,23 +440,27 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                       </span>
                     </div>
                     <div
-                      className={`rounded-lg px-4 py-2 ${
+                      className={`rounded-2xl px-4 py-3 shadow-sm ${
                         isOwn
-                          ? "bg-accent/20 border border-accent/30"
-                          : "bg-card border border-primary/20"
+                          ? "bg-gradient-to-br from-primary to-accent text-primary-foreground"
+                          : "glass-card"
                       }`}
                     >
                       {message.image_url && (
                         <img 
                           src={message.image_url} 
                           alt="Shared image" 
-                          className="max-w-full rounded-lg mb-2 max-h-64 object-contain"
+                          className="max-w-full rounded-xl mb-2 max-h-64 object-contain"
                         />
                       )}
                       {message.voice_url && (
                         <button
                           onClick={() => playVoice(message.voice_url!)}
-                          className="flex items-center gap-2 text-sm py-1 px-3 rounded-full bg-primary/20 hover:bg-primary/30 transition-colors"
+                          className={`flex items-center gap-2 text-sm py-2 px-4 rounded-full transition-all ${
+                            isOwn 
+                              ? "bg-primary-foreground/20 hover:bg-primary-foreground/30" 
+                              : "bg-primary/10 hover:bg-primary/20"
+                          }`}
                         >
                           {playingVoice === message.voice_url ? (
                             <Pause className="w-4 h-4" />
@@ -469,7 +471,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                         </button>
                       )}
                       {message.content && (
-                        <p className="text-sm text-foreground break-words">
+                        <p className={`text-sm break-words ${isOwn ? "" : "text-foreground"}`}>
                           {message.content}
                         </p>
                       )}
@@ -485,7 +487,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
 
       {/* Input area */}
       {selectedRecipient && (
-        <div className="relative z-20 bg-card/80 backdrop-blur-xl border-t border-primary/30 px-4 py-4">
+        <div className="relative z-20 glass-card border-t px-4 py-4">
           <form
             onSubmit={handleSendMessage}
             className="max-w-4xl mx-auto flex gap-3 items-center"
@@ -502,11 +504,11 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
             {/* Image upload button */}
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
-              className="h-12 w-12 border border-primary/30 hover:bg-primary/10"
+              className="h-12 w-12 rounded-xl hover:bg-primary/10 hover:border-primary"
             >
               <Image className="w-5 h-5 text-primary" />
             </Button>
@@ -514,14 +516,14 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
             {/* Voice record button */}
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={isRecording ? stopRecording : startRecording}
               disabled={isLoading && !isRecording}
-              className={`h-12 w-12 border ${
+              className={`h-12 w-12 rounded-xl ${
                 isRecording 
-                  ? "border-destructive bg-destructive/20 hover:bg-destructive/30" 
-                  : "border-primary/30 hover:bg-primary/10"
+                  ? "border-destructive bg-destructive/10 hover:bg-destructive/20" 
+                  : "hover:bg-primary/10 hover:border-primary"
               }`}
             >
               {isRecording ? (
@@ -536,14 +538,14 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 bg-background/50 border-primary/30 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 h-12"
+              className="flex-1 bg-background/50 rounded-xl h-12 focus:ring-2 focus:ring-primary/50"
               maxLength={500}
               disabled={isLoading || isRecording}
             />
             <Button
               type="submit"
               disabled={isLoading || !newMessage.trim() || isRecording}
-              className="h-12 px-6 bg-primary text-primary-foreground hover:bg-primary/90 font-display tracking-wider glow-primary transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-12 px-6 btn-gradient rounded-xl text-primary-foreground font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-5 h-5" />
             </Button>
