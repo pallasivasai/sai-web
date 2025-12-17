@@ -19,25 +19,31 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_url: string | null
           recipient_id: string | null
           sender_id: string | null
           sender_name: string
+          voice_url: string | null
         }
         Insert: {
           content: string
           created_at?: string
           id?: string
+          image_url?: string | null
           recipient_id?: string | null
           sender_id?: string | null
           sender_name?: string
+          voice_url?: string | null
         }
         Update: {
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           recipient_id?: string | null
           sender_id?: string | null
           sender_name?: string
+          voice_url?: string | null
         }
         Relationships: [
           {
