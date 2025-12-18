@@ -11,6 +11,7 @@ interface Profile {
   id: string;
   user_id: string;
   username: string;
+  last_active?: string | null;
 }
 
 interface Message {
@@ -39,6 +40,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
   const [loading, setLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -54,6 +56,46 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
     fetchCurrentProfile();
     fetchProfiles();
   }, [user.id]);
+
+  // Update last_active and track presence
+  useEffect(() => {
+    if (!currentProfile) return;
+
+    // Update last_active immediately
+    const updateLastActive = async () => {
+      await supabase
+        .from('profiles')
+        .update({ last_active: new Date().toISOString() })
+        .eq('id', currentProfile.id);
+    };
+    updateLastActive();
+
+    // Update every 30 seconds
+    const interval = setInterval(updateLastActive, 30000);
+
+    // Setup presence channel
+    const presenceChannel = supabase.channel('online-users')
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const online = new Set<string>();
+        Object.values(state).forEach((presences: any) => {
+          presences.forEach((presence: any) => {
+            if (presence.profile_id) online.add(presence.profile_id);
+          });
+        });
+        setOnlineUsers(online);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({ profile_id: currentProfile.id });
+        }
+      });
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [currentProfile]);
 
   useEffect(() => {
     if (currentProfile && selectedRecipient) {
@@ -323,7 +365,24 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
     });
   };
 
+  const formatLastSeen = (dateString: string | null | undefined) => {
+    if (!dateString) return "Unknown";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
   const selectedUser = profiles.find(p => p.id === selectedRecipient);
+  const isSelectedUserOnline = selectedRecipient ? onlineUsers.has(selectedRecipient) : false;
 
   if (loading) {
     return (
@@ -364,28 +423,54 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
         </div>
       </header>
 
-      {/* User Selection */}
+      {/* User Selection with Status */}
       <div className="relative z-20 glass-card border-b px-4 py-4">
-        <div className="max-w-4xl mx-auto">
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Chat with
-          </label>
-          <Select value={selectedRecipient || ""} onValueChange={setSelectedRecipient}>
-            <SelectTrigger className="w-full max-w-xs rounded-xl bg-background/50 border-border">
-              <SelectValue placeholder="Select a friend..." />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl bg-card border-border">
-              {profiles.length === 0 ? (
-                <div className="p-3 text-muted-foreground text-sm">No other users yet</div>
-              ) : (
-                profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id} className="rounded-lg">
-                    {profile.username}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+        <div className="max-w-4xl mx-auto flex items-center gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Chat with
+            </label>
+            <Select value={selectedRecipient || ""} onValueChange={setSelectedRecipient}>
+              <SelectTrigger className="w-full max-w-xs rounded-xl bg-background/50 border-border">
+                <SelectValue placeholder="Select a friend..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl bg-card border-border">
+                {profiles.length === 0 ? (
+                  <div className="p-3 text-muted-foreground text-sm">No other users yet</div>
+                ) : (
+                  profiles.map((profile) => {
+                    const isOnline = onlineUsers.has(profile.id);
+                    return (
+                      <SelectItem key={profile.id} value={profile.id} className="rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-muted-foreground/50'}`} />
+                          <span>{profile.username}</span>
+                          {!isOnline && profile.last_active && (
+                            <span className="text-xs text-muted-foreground">
+                              • {formatLastSeen(profile.last_active)}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Selected user status */}
+          {selectedUser && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-background/30">
+              <span className={`w-3 h-3 rounded-full ${isSelectedUserOnline ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/50'}`} />
+              <div className="text-sm">
+                <span className="font-medium">{selectedUser.username}</span>
+                <span className="text-muted-foreground ml-2">
+                  {isSelectedUserOnline ? 'Online' : `Last seen ${formatLastSeen(selectedUser.last_active)}`}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
