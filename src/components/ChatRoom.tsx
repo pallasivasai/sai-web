@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, LogOut, Users, MessageSquare, Image, Mic, Square, Play, Pause } from "lucide-react";
+import { Send, LogOut, Users, MessageSquare, Image, Mic, Square, Play, Pause, Check, CheckCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 
@@ -23,6 +23,7 @@ interface Message {
   created_at: string;
   image_url?: string | null;
   voice_url?: string | null;
+  read_at?: string | null;
 }
 
 interface ChatRoomProps {
@@ -41,6 +42,8 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [isRecipientTyping, setIsRecipientTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -100,8 +103,10 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
   useEffect(() => {
     if (currentProfile && selectedRecipient) {
       fetchMessages();
+      markMessagesAsRead();
       
-      const channel = supabase
+      // Messages channel for new messages and read receipts
+      const messagesChannel = supabase
         .channel('private-messages')
         .on(
           'postgres_changes',
@@ -117,16 +122,78 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
               (newMsg.sender_id === selectedRecipient && newMsg.recipient_id === currentProfile.id)
             ) {
               setMessages((prev) => [...prev, newMsg]);
+              // Mark as read if we're the recipient
+              if (newMsg.sender_id === selectedRecipient) {
+                markMessageAsRead(newMsg.id);
+              }
             }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+          },
+          (payload) => {
+            const updatedMsg = payload.new as Message;
+            setMessages((prev) => 
+              prev.map(msg => msg.id === updatedMsg.id ? updatedMsg : msg)
+            );
           }
         )
         .subscribe();
 
+      // Typing indicator channel
+      const typingChannel = supabase
+        .channel(`typing-${[currentProfile.id, selectedRecipient].sort().join('-')}`)
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          if (payload.payload.user_id === selectedRecipient) {
+            setIsRecipientTyping(true);
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 2000);
+          }
+        })
+        .subscribe();
+
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(messagesChannel);
+        supabase.removeChannel(typingChannel);
       };
     }
   }, [currentProfile, selectedRecipient]);
+
+  // Mark messages as read when viewing conversation
+  const markMessagesAsRead = async () => {
+    if (!currentProfile || !selectedRecipient) return;
+    
+    await supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('sender_id', selectedRecipient)
+      .eq('recipient_id', currentProfile.id)
+      .is('read_at', null);
+  };
+
+  const markMessageAsRead = async (messageId: string) => {
+    await supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', messageId);
+  };
+
+  // Send typing indicator
+  const sendTypingIndicator = async () => {
+    if (!currentProfile || !selectedRecipient) return;
+    
+    const channelName = `typing-${[currentProfile.id, selectedRecipient].sort().join('-')}`;
+    await supabase.channel(channelName).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { user_id: currentProfile.id }
+    });
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -560,11 +627,37 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                           {message.content}
                         </p>
                       )}
+                      {/* Read receipts for own messages */}
+                      {isOwn && (
+                        <div className="flex justify-end mt-1">
+                          {message.read_at ? (
+                            <CheckCheck className="w-4 h-4 text-primary-foreground/80" />
+                          ) : (
+                            <Check className="w-4 h-4 text-primary-foreground/50" />
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })
+          )}
+          
+          {/* Typing indicator */}
+          {isRecipientTyping && selectedUser && (
+            <div className="message-enter flex gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-md bg-secondary text-secondary-foreground">
+                {selectedUser.username.charAt(0).toUpperCase()}
+              </div>
+              <div className="glass-card rounded-2xl px-4 py-3 shadow-sm">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -621,7 +714,10 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
             <Input
               type="text"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                if (e.target.value.trim()) sendTypingIndicator();
+              }}
               placeholder="Type your message..."
               className="flex-1 bg-background/50 rounded-xl h-12 focus:ring-2 focus:ring-primary/50"
               maxLength={500}
