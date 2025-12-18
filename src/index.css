@@ -165,6 +165,8 @@
     filter: blur(80px);
     opacity: 0.6;
     animation: float 20s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
   }
 
   .floating-orbs::before {
