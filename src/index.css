@@ -166,7 +166,7 @@
     opacity: 0.6;
     animation: float 20s ease-in-out infinite;
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
   }
 
   .floating-orbs::before {
@@ -175,6 +175,7 @@
     background: hsl(var(--gradient-start) / 0.3);
     top: -100px;
     left: -100px;
+    pointer-events: none;
   }
 
   .floating-orbs::after {
@@ -184,6 +185,7 @@
     bottom: -100px;
     right: -100px;
     animation-delay: -10s;
+    pointer-events: none;
   }
 
   @keyframes gradient-shift {
