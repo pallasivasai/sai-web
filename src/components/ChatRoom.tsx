@@ -460,12 +460,15 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col mesh-bg floating-orbs relative">
+    <div className="min-h-screen flex flex-col mesh-bg floating-orbs relative overflow-hidden">
+      {/* Light rays effect */}
+      <div className="light-rays" />
+      
       {/* Header */}
-      <header className="relative z-20 glass-card border-b px-4 py-4">
+      <header className="relative z-20 glass-card card-ocean border-b px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl btn-gradient flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-2xl btn-gradient flex items-center justify-center shadow-lg hover-lift">
               <MessageSquare className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
@@ -482,7 +485,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
             onClick={onLogout}
             variant="outline"
             size="sm"
-            className="rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+            className="rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 hover-lift ripple-effect"
           >
             <LogOut className="w-4 h-4 mr-2" />
             Logout
@@ -491,14 +494,14 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
       </header>
 
       {/* User Selection with Status */}
-      <div className="relative z-20 glass-card border-b px-4 py-4">
+      <div className="relative z-20 glass-card card-ocean border-b px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-foreground mb-2">
               Chat with
             </label>
             <Select value={selectedRecipient || ""} onValueChange={setSelectedRecipient}>
-              <SelectTrigger className="w-full max-w-xs rounded-xl bg-background/50 border-border">
+              <SelectTrigger className="w-full max-w-xs rounded-xl bg-background/50 border-border hover-glow">
                 <SelectValue placeholder="Select a friend..." />
               </SelectTrigger>
               <SelectContent className="rounded-xl bg-card border-border">
@@ -508,9 +511,9 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                   profiles.map((profile) => {
                     const isOnline = onlineUsers.has(profile.id);
                     return (
-                      <SelectItem key={profile.id} value={profile.id} className="rounded-lg">
+                      <SelectItem key={profile.id} value={profile.id} className="rounded-lg hover-bright">
                         <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-muted-foreground/50'}`} />
+                          <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 pulse-online' : 'bg-muted-foreground/50'}`} />
                           <span>{profile.username}</span>
                           {!isOnline && profile.last_active && (
                             <span className="text-xs text-muted-foreground">
@@ -528,8 +531,8 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
           
           {/* Selected user status */}
           {selectedUser && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-background/30">
-              <span className={`w-3 h-3 rounded-full ${isSelectedUserOnline ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/50'}`} />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-background/30 card-ocean">
+              <span className={`w-3 h-3 rounded-full ${isSelectedUserOnline ? 'bg-green-500 pulse-online' : 'bg-muted-foreground/50'}`} />
               <div className="text-sm">
                 <span className="font-medium">{selectedUser.username}</span>
                 <span className="text-muted-foreground ml-2">
@@ -542,11 +545,11 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
       </div>
 
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 relative z-20 dot-pattern">
+      <div className="flex-1 overflow-y-auto px-4 py-6 relative z-20 water-pattern">
         <div className="max-w-4xl mx-auto space-y-4">
           {!selectedRecipient ? (
             <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl btn-gradient mb-4 shadow-lg">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl btn-gradient mb-4 shadow-lg hover-lift shimmer">
                 <Users className="w-10 h-10 text-primary-foreground" />
               </div>
               <p className="text-muted-foreground">
@@ -555,7 +558,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
             </div>
           ) : messages.length === 0 ? (
             <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl btn-gradient mb-4 shadow-lg">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl btn-gradient mb-4 shadow-lg hover-lift shimmer">
                 <MessageSquare className="w-10 h-10 text-primary-foreground" />
               </div>
               <p className="text-muted-foreground">
@@ -572,7 +575,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                 >
                   {/* Avatar */}
                   <div
-                    className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-md ${
+                    className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-md hover-scale ${
                       isOwn
                         ? "btn-gradient text-primary-foreground"
                         : "bg-secondary text-secondary-foreground"
@@ -592,10 +595,10 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                       </span>
                     </div>
                     <div
-                      className={`rounded-2xl px-4 py-3 shadow-sm ${
+                      className={`rounded-2xl px-4 py-3 shadow-sm hover-bright ${
                         isOwn
-                          ? "bg-gradient-to-br from-primary to-accent text-primary-foreground"
-                          : "glass-card"
+                          ? "message-ocean text-primary-foreground"
+                          : "glass-card card-ocean"
                       }`}
                     >
                       {message.image_url && (
@@ -665,7 +668,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
 
       {/* Input area */}
       {selectedRecipient && (
-        <div className="relative z-20 glass-card border-t px-4 py-4">
+        <div className="relative z-20 glass-card card-ocean border-t px-4 py-4">
           <form
             onSubmit={handleSendMessage}
             className="max-w-4xl mx-auto flex gap-3 items-center"
@@ -686,7 +689,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
               size="icon"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
-              className="h-12 w-12 rounded-xl hover:bg-primary/10 hover:border-primary"
+              className="h-12 w-12 rounded-xl hover:bg-primary/10 hover:border-primary hover-lift ripple-effect"
             >
               <Image className="w-5 h-5 text-primary" />
             </Button>
@@ -698,7 +701,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
               size="icon"
               onClick={isRecording ? stopRecording : startRecording}
               disabled={isLoading && !isRecording}
-              className={`h-12 w-12 rounded-xl ${
+              className={`h-12 w-12 rounded-xl hover-lift ripple-effect ${
                 isRecording 
                   ? "border-destructive bg-destructive/10 hover:bg-destructive/20" 
                   : "hover:bg-primary/10 hover:border-primary"
@@ -719,7 +722,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                 if (e.target.value.trim()) sendTypingIndicator();
               }}
               placeholder="Type your message..."
-              className="flex-1 bg-background/50 rounded-xl h-12 focus:ring-2 focus:ring-primary/50"
+              className="flex-1 bg-background/50 rounded-xl h-12 focus:ring-2 focus:ring-primary/50 hover-glow"
               maxLength={500}
               disabled={isLoading || isRecording}
             />
