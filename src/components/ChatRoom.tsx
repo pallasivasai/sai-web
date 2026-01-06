@@ -473,7 +473,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
             </div>
             <div>
               <h1 className="font-display text-xl font-bold text-gradient">
-                Sai Webpage
+                S-Secret Chat
               </h1>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Users className="w-3 h-3" />
