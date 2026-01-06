@@ -100,7 +100,7 @@ const Auth = () => {
   const getTitle = () => {
     switch (mode) {
       case "login": return "Welcome Back";
-      case "signup": return "Join Sai Webpage";
+      case "signup": return "Join S-Secret Chat";
       case "forgot": return "Reset Password";
       case "reset": return "Set New Password";
     }
