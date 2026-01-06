@@ -67,6 +67,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          chat_password: string | null
           created_at: string
           id: string
           last_active: string | null
@@ -74,6 +75,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          chat_password?: string | null
           created_at?: string
           id?: string
           last_active?: string | null
@@ -81,6 +83,7 @@ export type Database = {
           username: string
         }
         Update: {
+          chat_password?: string | null
           created_at?: string
           id?: string
           last_active?: string | null
