@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, LogOut, Users, MessageSquare, Image, Mic, Square, Play, Pause, Check, CheckCheck } from "lucide-react";
+import { Send, LogOut, Users, MessageSquare, Image, Mic, Square, Play, Pause, Check, CheckCheck, Lock, Settings, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 
@@ -12,6 +13,7 @@ interface Profile {
   user_id: string;
   username: string;
   last_active?: string | null;
+  chat_password?: string | null;
 }
 
 interface Message {
@@ -43,6 +45,12 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [isRecipientTyping, setIsRecipientTyping] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [pendingRecipient, setPendingRecipient] = useState<string | null>(null);
+  const [unlockedRecipients, setUnlockedRecipients] = useState<Set<string>>(new Set());
+  const [showSetPasswordDialog, setShowSetPasswordDialog] = useState(false);
+  const [newChatPassword, setNewChatPassword] = useState("");
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -233,6 +241,72 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
     }
     setProfiles(data || []);
     setLoading(false);
+  };
+
+  // Handle recipient selection with password check
+  const handleRecipientSelect = (recipientId: string) => {
+    const recipient = profiles.find(p => p.id === recipientId);
+    
+    // If recipient has a password and we haven't unlocked them yet
+    if (recipient?.chat_password && !unlockedRecipients.has(recipientId)) {
+      setPendingRecipient(recipientId);
+      setPasswordInput("");
+      setShowPasswordDialog(true);
+    } else {
+      setSelectedRecipient(recipientId);
+    }
+  };
+
+  // Verify chat password
+  const handlePasswordSubmit = () => {
+    const recipient = profiles.find(p => p.id === pendingRecipient);
+    
+    if (recipient?.chat_password === passwordInput) {
+      setUnlockedRecipients(prev => new Set([...prev, pendingRecipient!]));
+      setSelectedRecipient(pendingRecipient);
+      setShowPasswordDialog(false);
+      setPasswordInput("");
+      setPendingRecipient(null);
+      toast({
+        title: "Access granted!",
+        description: `You can now chat with ${recipient.username}`,
+      });
+    } else {
+      toast({
+        title: "Wrong password",
+        description: "Please enter the correct password to chat with this user.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Set/update own chat password
+  const handleSetChatPassword = async () => {
+    if (!currentProfile) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ chat_password: newChatPassword || null })
+      .eq('id', currentProfile.id);
+
+    if (error) {
+      toast({
+        title: "Failed to update password",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCurrentProfile({ ...currentProfile, chat_password: newChatPassword || null });
+    setShowSetPasswordDialog(false);
+    setNewChatPassword("");
+    toast({
+      title: newChatPassword ? "Chat password set!" : "Chat password removed!",
+      description: newChatPassword 
+        ? "Others will need this password to message you." 
+        : "Anyone can now message you without a password.",
+    });
   };
 
   const fetchMessages = async () => {
@@ -481,15 +555,27 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
               </p>
             </div>
           </div>
-          <Button
-            onClick={onLogout}
-            variant="outline"
-            size="sm"
-            className="rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 hover-lift ripple-effect"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setShowSetPasswordDialog(true)}
+              variant="outline"
+              size="sm"
+              className="rounded-xl hover-lift ripple-effect"
+              title="Set chat password"
+            >
+              <Lock className="w-4 h-4 mr-2" />
+              {currentProfile?.chat_password ? "Change Password" : "Set Password"}
+            </Button>
+            <Button
+              onClick={onLogout}
+              variant="outline"
+              size="sm"
+              className="rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 hover-lift ripple-effect"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -500,7 +586,7 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
             <label className="block text-sm font-medium text-foreground mb-2">
               Chat with
             </label>
-            <Select value={selectedRecipient || ""} onValueChange={setSelectedRecipient}>
+            <Select value={selectedRecipient || ""} onValueChange={handleRecipientSelect}>
               <SelectTrigger className="w-full max-w-xs rounded-xl bg-background/50 border-border hover-glow">
                 <SelectValue placeholder="Select a friend..." />
               </SelectTrigger>
@@ -510,11 +596,16 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
                 ) : (
                   profiles.map((profile) => {
                     const isOnline = onlineUsers.has(profile.id);
+                    const hasPassword = !!profile.chat_password;
+                    const isUnlocked = unlockedRecipients.has(profile.id);
                     return (
                       <SelectItem key={profile.id} value={profile.id} className="rounded-lg hover-bright">
                         <div className="flex items-center gap-2">
                           <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 pulse-online' : 'bg-muted-foreground/50'}`} />
                           <span>{profile.username}</span>
+                          {hasPassword && (
+                            <Lock className={`w-3 h-3 ${isUnlocked ? 'text-green-500' : 'text-amber-500'}`} />
+                          )}
                           {!isOnline && profile.last_active && (
                             <span className="text-xs text-muted-foreground">
                               • {formatLastSeen(profile.last_active)}
@@ -736,6 +827,103 @@ const ChatRoom = ({ user, onLogout }: ChatRoomProps) => {
           </form>
         </div>
       )}
+
+      {/* Password Entry Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="glass-card card-ocean rounded-2xl border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gradient">
+              <Lock className="w-5 h-5" />
+              Password Required
+            </DialogTitle>
+            <DialogDescription>
+              {profiles.find(p => p.id === pendingRecipient)?.username} requires a password to chat. 
+              Please enter the password they shared with you.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="password"
+              placeholder="Enter chat password..."
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              className="rounded-xl bg-background/50 hover-glow"
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowPasswordDialog(false);
+                setPasswordInput("");
+                setPendingRecipient(null);
+              }}
+              className="rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePasswordSubmit}
+              className="btn-gradient rounded-xl text-primary-foreground"
+              disabled={!passwordInput}
+            >
+              Unlock Chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Set Password Dialog */}
+      <Dialog open={showSetPasswordDialog} onOpenChange={setShowSetPasswordDialog}>
+        <DialogContent className="glass-card card-ocean rounded-2xl border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gradient">
+              <Lock className="w-5 h-5" />
+              Set Chat Password
+            </DialogTitle>
+            <DialogDescription>
+              Set a password that others must enter before they can message you. 
+              Share this password only with people you want to chat with.
+              {currentProfile?.chat_password && (
+                <span className="block mt-2 text-amber-500">
+                  You currently have a password set. Leave blank to remove it.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="text"
+              placeholder={currentProfile?.chat_password ? "Enter new password or leave blank to remove..." : "Enter a password..."}
+              value={newChatPassword}
+              onChange={(e) => setNewChatPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSetChatPassword()}
+              className="rounded-xl bg-background/50 hover-glow"
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSetPasswordDialog(false);
+                setNewChatPassword("");
+              }}
+              className="rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSetChatPassword}
+              className="btn-gradient rounded-xl text-primary-foreground"
+            >
+              {newChatPassword ? "Set Password" : (currentProfile?.chat_password ? "Remove Password" : "Cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
