@@ -168,3 +168,25 @@ The repository client integration must be configured for the Supabase project us
 
 - [Live App](https://sai-web.lovable.app)
 - [GitHub Repository](https://github.com/pallasivasai/sai-web)
+
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    A[User] --> B[Auth UI]
+    B --> C[Supabase Auth]
+    C --> D[Authenticated Chat]
+    D --> E[Profiles / Contacts]
+    E --> F[One-to-One Conversation]
+    F --> G[messages table]
+    G --> H[Supabase Realtime]
+    H --> F
+    F --> I[Typing Broadcast]
+    F --> J[Online Presence]
+    F --> K[Read Receipts]
+    F --> L[chat-media Storage]
+    L --> M[Image / Voice Message]
+```
+
+This architecture matches the documented authentication, one-to-one messaging, realtime updates, presence, typing, read receipts, and media-storage flows.
